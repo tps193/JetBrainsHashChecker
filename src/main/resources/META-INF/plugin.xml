@@ -21,10 +21,21 @@
     <!-- Product and plugin compatibility requirements.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
     <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.gradle</depends>
 
-    <!-- Extension points defined by the plugin.
-         Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
     <extensions defaultExtensionNs="com.intellij">
-
+        <toolWindow id="Checksum Validation" secondary="true" icon="AllIcons.General.Modified" anchor="right"
+                    factoryClass="org.shadrin.hashchecker.window.WindowFactory"/>
     </extensions>
+
+    <extensions defaultExtensionNs="com.intellij.gradle">
+    </extensions>
+
+    <actions>
+        <action class="org.shadrin.hashchecker.actions.AnalyzeHashesAction"
+                id="org.shadrin.hashchecker.actions.AnalyzeHashesAction"
+                text="Analyze Hashes">
+            <add-to-group group-id="AnalyzeActionsPopup"/>
+        </action>
+    </actions>
 </idea-plugin>
