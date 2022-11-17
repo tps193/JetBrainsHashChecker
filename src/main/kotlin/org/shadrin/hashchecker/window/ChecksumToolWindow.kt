@@ -96,7 +96,9 @@ class ChecksumToolWindow(private val project: Project) : ChecksumUpdateListener 
                     ?.userObject
                     ?.castSafelyTo<ArtifactChecksumInfo>()
                 data?.psi?.let {
-                    NavigationUtil.activateFileWithPsiElement(it)
+                    if (it.isValid) {
+                        NavigationUtil.activateFileWithPsiElement(it)
+                    }
                 }
             }
         })
