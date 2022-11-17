@@ -1,23 +1,28 @@
 package org.shadrin.hashchecker.window.tree
 
+import com.intellij.psi.PsiElement
 import org.shadrin.hashchecker.model.ChecksumComparison
 import javax.swing.tree.DefaultMutableTreeNode
 import javax.swing.tree.MutableTreeNode
 
 data class ArtifactChecksumTreeNode(
-    val artifactId: String,
-    val checksumVerification: ChecksumComparison,
-    val type: MyTreeNodeType,
-    val psi: Any? = null,
+    val artifactChecksumInfo: ArtifactChecksumInfo,
     val children: MutableList<ArtifactChecksumTreeNode> = mutableListOf(),
     var parent: ArtifactChecksumTreeNode? = null
 ) {
     override fun toString(): String {
-        return artifactId
+        return artifactChecksumInfo.artifactId
     }
 }
 
-enum class MyTreeNodeType {
+data class ArtifactChecksumInfo(
+    val artifactId: String,
+    val checksumVerification: ChecksumComparison,
+    val type: ArtifactNodeType,
+    val psi: PsiElement? = null,
+)
+
+enum class ArtifactNodeType {
     MODULE,
     ARTIFACT,
     UNKNOWN
@@ -25,13 +30,13 @@ enum class MyTreeNodeType {
 
 fun ArtifactChecksumTreeNode.findNode(artifactId: String): ArtifactChecksumTreeNode? {
     this.children.forEach {
-        return if(it.artifactId == artifactId) it else it.findNode(artifactId)
+        return if(it.artifactChecksumInfo.artifactId == artifactId) it else it.findNode(artifactId)
     }
     return null
 }
 
 fun ArtifactChecksumTreeNode.toMutableTreeNode(): MutableTreeNode {
-    val node = DefaultMutableTreeNode(this)
+    val node = DefaultMutableTreeNode(this.artifactChecksumInfo)
     for(child in children) {
         node.add(child.toMutableTreeNode())
     }

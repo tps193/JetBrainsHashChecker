@@ -1,47 +1,106 @@
 package org.shadrin.hashchecker.window
 
+import com.intellij.codeInsight.navigation.NavigationUtil
 import com.intellij.openapi.application.invokeLater
 import com.intellij.openapi.externalSystem.dependency.analyzer.DependencyAnalyzerDependency
 import com.intellij.openapi.progress.runBackgroundableTask
 import com.intellij.openapi.project.Project
+import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.treeStructure.Tree
+import com.intellij.util.castSafelyTo
 import org.jetbrains.plugins.gradle.dependency.analyzer.GradleDependencyAnalyzerContributor
+import org.shadrin.hashchecker.extensions.getArtifactNodeType
 import org.shadrin.hashchecker.extensions.getPsi
-import org.shadrin.hashchecker.extensions.toChecksumComparisonStatus
 import org.shadrin.hashchecker.listener.ChecksumUpdateListener
 import org.shadrin.hashchecker.model.ChecksumComparison
 import org.shadrin.hashchecker.model.ChecksumComparisonStatus
-import org.shadrin.hashchecker.window.tree.ArtifactChecksumTreeNode
-import org.shadrin.hashchecker.window.tree.MyTreeNodeType
-import org.shadrin.hashchecker.window.tree.toMutableTreeNode
-import java.awt.GridLayout
+import org.shadrin.hashchecker.window.tree.*
+import java.awt.GridBagConstraints
+import java.awt.GridBagLayout
+import java.awt.event.MouseAdapter
+import java.awt.event.MouseEvent
+import javax.swing.JButton
 import javax.swing.JComponent
+import javax.swing.JLabel
 import javax.swing.JPanel
 import javax.swing.tree.DefaultMutableTreeNode
 import javax.swing.tree.DefaultTreeModel
 import javax.swing.tree.TreeNode
 
+
 class ChecksumToolWindow(private val project: Project) : ChecksumUpdateListener {
 
     private val treeModel: DefaultTreeModel = DefaultTreeModel(DefaultMutableTreeNode("No result"))
+    private val artifactsTree = Tree()
+    private val goToButton = JButton("Go to")
 
     fun getContent(): JComponent {
-        val mainPanel = JPanel()
-        val layout = GridLayout().also {
-            it.rows = 2
+        val mainPanel = JPanel().apply {
+            layout = GridBagLayout()
         }
-        val artifactsTree = Tree()
 
+        artifactsTree.cellRenderer = ArtifactTreeCellRenderer()
         artifactsTree.model = treeModel
-        artifactsTree.isHorizontalAutoScrollingEnabled = true
-        artifactsTree.scrollsOnExpand = true
-        artifactsTree.showsRootHandles = false
-        artifactsTree.autoscrolls = true
 
-        mainPanel.layout = layout
-        mainPanel.add(artifactsTree)
+        val scrollPane = JBScrollPane(artifactsTree)
+
+        val constraint = GridBagConstraints().apply {
+            gridx = 0
+            gridy = 0
+            weighty = 1.0
+            weightx = 1.0
+            fill = GridBagConstraints.BOTH
+        }
+        mainPanel.add(scrollPane, constraint)
+
         val descriptionPanel = JPanel()
-        mainPanel.add(descriptionPanel)
+        descriptionPanel.layout = GridBagLayout()
+        val descriptionText = JLabel()
+        val descriptionPanelConstraints = GridBagConstraints().apply {
+            fill = GridBagConstraints.BOTH
+            weightx = 1.0
+            gridx = 0
+        }
+        descriptionPanel.add(descriptionText, descriptionPanelConstraints)
+
+        descriptionPanelConstraints.gridx = 1
+        descriptionPanel.add(goToButton, descriptionPanelConstraints)
+        goToButton.isVisible = false
+
+        constraint.apply {
+            gridy++
+            weighty = 0.1
+        }
+        mainPanel.add(descriptionPanel, constraint)
+
+        artifactsTree.addTreeSelectionListener {
+            val selection = artifactsTree.lastSelectedPathComponent
+            if (selection is DefaultMutableTreeNode) {
+                selection.userObject.castSafelyTo<ArtifactChecksumInfo>()?.let {
+                    val verification = it.checksumVerification
+                    val status = verification.status
+                    descriptionText.text = when(status) {
+                        is ChecksumComparisonStatus.Error -> status.msg
+                        is ChecksumComparisonStatus.Skipped -> status.msg
+                        else -> ""
+                    }
+                    goToButton.isVisible = it.psi != null
+                }
+            }
+        }
+
+        goToButton.addMouseListener(object : MouseAdapter() {
+            override fun mouseClicked(e: MouseEvent?) {
+                val selection = artifactsTree.lastSelectedPathComponent
+                val data = selection.castSafelyTo<DefaultMutableTreeNode>()
+                    ?.userObject
+                    ?.castSafelyTo<ArtifactChecksumInfo>()
+                data?.psi?.let {
+                    NavigationUtil.activateFileWithPsiElement(it)
+                }
+            }
+        })
+
         return mainPanel
     }
 
@@ -51,10 +110,13 @@ class ChecksumToolWindow(private val project: Project) : ChecksumUpdateListener 
 
     override fun notify(checksumComparisonResult: List<ChecksumComparison>) {
         updateTree(DefaultMutableTreeNode("Loading..."))
+        goToButton.isVisible = false
+        artifactsTree.isRootVisible = true
         runBackgroundableTask("Update checksum tree", project, false) {
             val tree = buildResultsTree(checksumComparisonResult)
             invokeLater {
                 updateTree(tree)
+                artifactsTree.isRootVisible = false
             }
         }
     }
@@ -62,9 +124,10 @@ class ChecksumToolWindow(private val project: Project) : ChecksumUpdateListener 
     private fun buildResultsTree(checksumComparisonResult: List<ChecksumComparison>): TreeNode {
         val checksumVerification = checksumComparisonResult.associateBy { it.artifactId }
         val rootNode = ArtifactChecksumTreeNode(
-            "root",
-            ChecksumComparison(artifactId = "stub", status = ChecksumComparisonStatus.UNKNOWN),
-            MyTreeNodeType.UNKNOWN
+            ArtifactChecksumInfo(
+                "root",
+                ChecksumComparison(artifactId = "stub", status = ChecksumComparisonStatus.UNKNOWN),
+                ArtifactNodeType.UNKNOWN)
         )
         val gradleDependencyAnalyzerContributor = GradleDependencyAnalyzerContributor(project)
         gradleDependencyAnalyzerContributor.getProjects().forEach { it ->
@@ -81,16 +144,19 @@ class ChecksumToolWindow(private val project: Project) : ChecksumUpdateListener 
                 while(stack.isNotEmpty()) {
                     val next = stack.removeLast()
                     val id = next.data.toString()
-                    var existing: ArtifactChecksumTreeNode? = parentNode.children.find { it.artifactId == id }
+                    var existing: ArtifactChecksumTreeNode? = parentNode.children.find { it.artifactChecksumInfo.artifactId == id }
                     if (existing == null) {
+                        val type = next.getArtifactNodeType()
                         val newNode = ArtifactChecksumTreeNode(
-                            artifactId = id,
-                            checksumVerification = checksumVerification[id] ?: ChecksumComparison(
+                            artifactChecksumInfo = ArtifactChecksumInfo(
                                 artifactId = id,
-                                status = ChecksumComparisonStatus.Skipped("No information for artifact")
+                                checksumVerification = checksumVerification[id] ?: ChecksumComparison(
+                                    artifactId = id,
+                                    status = ChecksumComparisonStatus.Skipped("No information for artifact")
+                                ),
+                                type = type,
+                                psi = next.getPsi(project),
                             ),
-                            type = next.toChecksumComparisonStatus(),
-                            psi = next.getPsi(project),
                             children = mutableListOf(),
                             parent = parentNode
                         )

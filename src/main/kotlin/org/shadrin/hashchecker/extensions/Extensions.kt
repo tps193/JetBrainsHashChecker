@@ -8,7 +8,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import org.jetbrains.plugins.gradle.dependency.analyzer.getParentModule
 import org.jetbrains.plugins.gradle.dependency.analyzer.getUnifiedCoordinates
-import org.shadrin.hashchecker.window.tree.MyTreeNodeType
+import org.shadrin.hashchecker.window.tree.ArtifactNodeType
 import java.io.File
 import java.security.MessageDigest
 
@@ -21,10 +21,10 @@ fun File.calculateChecksum(): String {
     }
 }
 
-fun DependencyAnalyzerDependency.toChecksumComparisonStatus() = when(this.data) {
-    is DAModule -> MyTreeNodeType.MODULE
-    is DAArtifact -> MyTreeNodeType.ARTIFACT
-    else -> MyTreeNodeType.UNKNOWN
+fun DependencyAnalyzerDependency.getArtifactNodeType() = when(this.data) {
+    is DAModule -> ArtifactNodeType.MODULE
+    is DAArtifact -> ArtifactNodeType.ARTIFACT
+    else -> ArtifactNodeType.UNKNOWN
 }
 
 fun DependencyAnalyzerDependency.getPsi(project: Project): PsiElement? {
