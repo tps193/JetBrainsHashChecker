@@ -5,7 +5,9 @@ import com.fasterxml.jackson.databind.JsonMappingException
 import com.intellij.openapi.externalSystem.model.project.LibraryData
 import com.intellij.openapi.externalSystem.model.project.LibraryPathType
 import com.intellij.openapi.externalSystem.service.project.ProjectDataManager
+import com.intellij.openapi.externalSystem.service.project.manage.ProjectDataImportListener
 import com.intellij.openapi.progress.ProgressIndicator
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
 import com.squareup.okhttp.MediaType
@@ -29,6 +31,12 @@ import java.io.File
 import java.io.IOException
 import java.util.logging.Level
 import java.util.logging.Logger
+
+class ChecksumUpdaterProjectImportListener(private val project: Project) : ProjectDataImportListener {
+    override fun onImportFinished(projectPath: String?) {
+        ProgressManager.getInstance().run(ChecksumUpdater(project))
+    }
+}
 
 class ChecksumUpdater(project: Project) : Task.Backgroundable(
     project,
