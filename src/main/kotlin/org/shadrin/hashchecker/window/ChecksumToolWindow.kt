@@ -155,7 +155,7 @@ class ChecksumToolWindow(private val project: Project) : ChecksumUpdateListener 
                                     status = ChecksumComparisonStatus.Skipped("No information for artifact")
                                 ),
                                 type = type,
-                                psi = next.getPsi(project),
+                                psi = next.getPsi(project) ?: parentNode.artifactChecksumInfo.psi
                             ),
                             children = mutableListOf(),
                             parent = parentNode

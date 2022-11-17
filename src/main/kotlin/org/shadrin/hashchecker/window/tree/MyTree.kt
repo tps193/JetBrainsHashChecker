@@ -28,13 +28,6 @@ enum class ArtifactNodeType {
     UNKNOWN
 }
 
-fun ArtifactChecksumTreeNode.findNode(artifactId: String): ArtifactChecksumTreeNode? {
-    this.children.forEach {
-        return if(it.artifactChecksumInfo.artifactId == artifactId) it else it.findNode(artifactId)
-    }
-    return null
-}
-
 fun ArtifactChecksumTreeNode.toMutableTreeNode(): MutableTreeNode {
     val node = DefaultMutableTreeNode(this.artifactChecksumInfo)
     for(child in children) {
