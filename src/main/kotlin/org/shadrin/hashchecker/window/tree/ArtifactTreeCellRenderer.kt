@@ -27,8 +27,8 @@ class ArtifactTreeCellRenderer : DefaultTreeCellRenderer() {
                     ArtifactNodeType.MODULE -> AllIcons.Modules.SourceRoot
                     else -> {
                         when(data.checksumVerification.status) {
-                            is ChecksumComparisonStatus.Error -> AllIcons.Ide.FatalError
-                            ChecksumComparisonStatus.OK -> AllIcons.Ide.Rating
+                            is ChecksumComparisonStatus.Error -> AllIcons.General.Error
+                            ChecksumComparisonStatus.OK -> AllIcons.General.InspectionsOK
                             else -> AllIcons.FileTypes.Unknown
                         }
                     }

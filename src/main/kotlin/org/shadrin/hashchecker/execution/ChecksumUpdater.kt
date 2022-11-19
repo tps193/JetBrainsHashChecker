@@ -21,12 +21,13 @@ import org.jetbrains.plugins.gradle.util.GradleConstants
 import org.shadrin.hashchecker.SettingsProvider
 import org.shadrin.hashchecker.data.ChecksumCacheService
 import org.shadrin.hashchecker.extensions.calculateChecksum
+import org.shadrin.hashchecker.extensions.toTrimmerUrl
 import org.shadrin.hashchecker.listener.ChecksumUpdateListener
-import org.shadrin.hashchecker.model.*
-import org.shadrin.hashchecker.model.json.ArtifactChecksum
-import org.shadrin.hashchecker.model.json.ArtifactIdList
+import org.shadrin.hashchecker.model.ChecksumComparison
 import org.shadrin.hashchecker.model.ChecksumComparisonStatus
+import org.shadrin.hashchecker.model.json.ArtifactChecksum
 import org.shadrin.hashchecker.model.json.ArtifactChecksumList
+import org.shadrin.hashchecker.model.json.ArtifactIdList
 import java.io.File
 import java.io.IOException
 import java.util.logging.Level
@@ -57,9 +58,9 @@ class ChecksumUpdater(project: Project) : Task.Backgroundable(
                     val data = it.data
                     if (data is LibraryData) {
                         if (!data.isUnresolved) {
-                            artifactIds.add(data.externalName)
+                            val artifactId = "${data.groupId ?: ""}:${data.artifactId ?: ""}:${data.version ?: ""}"
+                            artifactIds.add(artifactId)
                             data.getPaths(LibraryPathType.BINARY).first().let { path ->
-                                val artifactId = data.externalName
                                 try {
                                     File(path).calculateChecksum().also { checksum ->
                                         checksumComparisonResult.add(
@@ -95,13 +96,19 @@ class ChecksumUpdater(project: Project) : Task.Backgroundable(
         val itemsForUpdate = checksumComparisonResult
             .filter { it.status == ChecksumComparisonStatus.UNKNOWN }
             .filter { it.serverChecksum == null }.toList()
-        val serverChecksums = retrieveChecksumsFromServer(
-            itemsForUpdate.map { it.artifactId }
-        )
-        project.getService(ChecksumCacheService::class.java).put(serverChecksums)
-        val serverChecksumMap = serverChecksums.map { it.identifier to it.checksum }.toMap()
+
+        val serverChecksumMap = getChunkSizeFromServer()?.let { chunk ->
+            val serverChecksums = itemsForUpdate.map { it.artifactId }
+                .chunked(chunk)
+                .map { retrieveChecksumsFromServer(it) }
+                .reduce { a, b -> a.toMutableList() + b }
+                .toList()
+            project.getService(ChecksumCacheService::class.java).put(serverChecksums)
+            serverChecksums
+        }?.associate { it.identifier to it.checksum }
+
         itemsForUpdate.forEach {
-            it.serverChecksum = serverChecksumMap[it.artifactId]
+            it.serverChecksum = serverChecksumMap?.get(it.artifactId)
             if (it.serverChecksum == null) {
                 it.status = ChecksumComparisonStatus.Skipped("No checksum retrieved from server")
             }
@@ -119,7 +126,7 @@ class ChecksumUpdater(project: Project) : Task.Backgroundable(
     private fun verifyChecksum(checksumComparisonResult: List<ChecksumComparison>) {
         checksumComparisonResult.forEach { result ->
             if (result.status == ChecksumComparisonStatus.UNKNOWN) {
-                if (result.serverChecksum.equals(result.localChecksum, true)) {
+                    if (result.serverChecksum.equals(result.localChecksum, true)) {
                     result.status = ChecksumComparisonStatus.OK
                 } else {
                     result.status = ChecksumComparisonStatus.Error("Incorrect artifact file checksum")
@@ -129,6 +136,25 @@ class ChecksumUpdater(project: Project) : Task.Backgroundable(
         project.messageBus.syncPublisher(ChecksumUpdateListener.CHECKSUM_UPDATE_TOPIC).notify(checksumComparisonResult)
     }
 
+    private fun getChunkSizeFromServer(): Int? {
+        val client = OkHttpClient()
+        val host = SettingsProvider.SERVER_URL.toTrimmerUrl()
+        val request = Request.Builder()
+            .url("$host/checksums/chunkSize")
+            .get()
+            .build()
+        val call = client.newCall(request)
+        try {
+            val response = call.execute().body().string()
+            return response.toInt()
+        } catch (e: IOException) {
+            logger.log(Level.WARNING, "Error getting chunk size from server", e)
+        } catch (e: NumberFormatException) {
+            logger.log(Level.WARNING, "Server returned incorrect chunk size", e)
+        }
+        return null
+    }
+
     private fun retrieveChecksumsFromServer(identifiers: List<String>): List<ArtifactChecksum> {
         val client = OkHttpClient()
         val artifacts = ArtifactIdList(identifiers.toList())
@@ -136,7 +162,7 @@ class ChecksumUpdater(project: Project) : Task.Backgroundable(
         val body = RequestBody.create(
             MediaType.parse("application/json"), json
         )
-        val host = SettingsProvider.SERVER_URL.trimEnd('/')
+        val host = SettingsProvider.SERVER_URL.toTrimmerUrl()
         val request = Request.Builder()
             .url("$host/checksums")
             .post(body)

@@ -6,9 +6,11 @@ import com.intellij.openapi.externalSystem.dependency.analyzer.DependencyAnalyze
 import com.intellij.openapi.progress.runBackgroundableTask
 import com.intellij.openapi.project.Project
 import com.intellij.ui.components.JBScrollPane
+import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.treeStructure.Tree
 import com.intellij.util.castSafelyTo
 import org.jetbrains.plugins.gradle.dependency.analyzer.GradleDependencyAnalyzerContributor
+import org.shadrin.hashchecker.extensions.DIGEST_ALGORITHM
 import org.shadrin.hashchecker.extensions.getArtifactNodeType
 import org.shadrin.hashchecker.extensions.getPsi
 import org.shadrin.hashchecker.listener.ChecksumUpdateListener
@@ -21,7 +23,6 @@ import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.JButton
 import javax.swing.JComponent
-import javax.swing.JLabel
 import javax.swing.JPanel
 import javax.swing.tree.DefaultMutableTreeNode
 import javax.swing.tree.DefaultTreeModel
@@ -55,7 +56,10 @@ class ChecksumToolWindow(private val project: Project) : ChecksumUpdateListener 
 
         val descriptionPanel = JPanel()
         descriptionPanel.layout = GridBagLayout()
-        val descriptionText = JLabel()
+        val descriptionText = JBTextArea().apply {
+            isEditable = false
+            lineWrap = true
+        }
         val descriptionPanelConstraints = GridBagConstraints().apply {
             fill = GridBagConstraints.BOTH
             weightx = 1.0
@@ -63,7 +67,9 @@ class ChecksumToolWindow(private val project: Project) : ChecksumUpdateListener 
         }
         descriptionPanel.add(descriptionText, descriptionPanelConstraints)
 
-        descriptionPanelConstraints.gridx = 1
+        descriptionPanelConstraints.gridy = 1
+        descriptionPanelConstraints.anchor = GridBagConstraints.CENTER
+
         descriptionPanel.add(goToButton, descriptionPanelConstraints)
         goToButton.isVisible = false
 
@@ -80,8 +86,16 @@ class ChecksumToolWindow(private val project: Project) : ChecksumUpdateListener 
                     val verification = it.checksumVerification
                     val status = verification.status
                     descriptionText.text = when(status) {
-                        is ChecksumComparisonStatus.Error -> status.msg
+                        is ChecksumComparisonStatus.Error -> """
+                            ${status.msg}
+                            Local($DIGEST_ALGORITHM): ${verification.localChecksum}
+                            Server($DIGEST_ALGORITHM): ${verification.serverChecksum}
+                        """.trimIndent()
                         is ChecksumComparisonStatus.Skipped -> status.msg
+                        is ChecksumComparisonStatus.OK -> """
+                            Verified
+                            ($DIGEST_ALGORITHM): ${verification.localChecksum}
+                        """.trimIndent()
                         else -> ""
                     }
                     goToButton.isVisible = it.psi != null

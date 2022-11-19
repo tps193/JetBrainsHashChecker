@@ -12,11 +12,13 @@ import org.shadrin.hashchecker.window.tree.ArtifactNodeType
 import java.io.File
 import java.security.MessageDigest
 
+const val DIGEST_ALGORITHM = "SHA-256"
+
 fun ByteArray.toHex() = joinToString(separator = "") { byte -> "%02x".format(byte) }
 
 fun File.calculateChecksum(): String {
     this.inputStream().use { fis ->
-        val digest = MessageDigest.getInstance("SHA-256")
+        val digest = MessageDigest.getInstance(DIGEST_ALGORITHM)
         return digest.digest(fis.readAllBytes()).toHex()
     }
 }
@@ -37,3 +39,5 @@ fun DependencyAnalyzerDependency.getPsi(project: Project): PsiElement? {
     }
     return dependency?.psiElement
 }
+
+fun String.toTrimmerUrl() = this.trimEnd('/')
