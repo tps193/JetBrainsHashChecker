@@ -62,5 +62,13 @@
                 text="Show Not Imported">
             <add-to-group group-id="ChecksumVerification.View"/>
         </action>
+
+        <!-- Demo action for testing -->
+        <action class="org.shadrin.hashchecker.actions.demo.SendChecksumsToServer"
+                id="org.shadrin.hashchecker.actions.demo.SendChecksumsToServer"
+                icon="AllIcons.General.AutoscrollToSource"
+                text="Sync Local Checksums">
+            <add-to-group group-id="ChecksumVerification.View" anchor="last"/>
+        </action>
     </actions>
 </idea-plugin>
