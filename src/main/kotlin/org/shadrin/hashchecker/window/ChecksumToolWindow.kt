@@ -96,6 +96,7 @@ class ChecksumToolWindow(private val project: Project) : ChecksumUpdateListener 
                             Verified
                             ($DIGEST_ALGORITHM): ${verification.localChecksum}
                         """.trimIndent()
+                        is ChecksumComparisonStatus.NOT_IMPORTED -> "Not imported to Module dependencies"
                         else -> ""
                     }
                     goToButton.isVisible = it.psi != null
@@ -168,7 +169,7 @@ class ChecksumToolWindow(private val project: Project) : ChecksumUpdateListener 
                                 artifactId = id,
                                 checksumVerification = checksumVerification[id] ?: ChecksumComparison(
                                     artifactId = id,
-                                    status = ChecksumComparisonStatus.Skipped("No information for artifact")
+                                    status = ChecksumComparisonStatus.NOT_IMPORTED
                                 ),
                                 type = type,
                                 psi = next.getPsi(project) ?: parentNode.artifactChecksumInfo.psi
