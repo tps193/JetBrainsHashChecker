@@ -11,12 +11,14 @@ Plugin additionally provides following logic:
    are revalidated automatically.
 2. Tree is expanded automatically, but saves expansion when filters are applied
 3. Provides navigation to the component in the build.gradle file
-4. Caches server checksums on Application level
+4. Caches server checksums on Application level to reduce connections to server
+5. Plugin is responsible for local and remote checksum comparison
 
 To run the plugin please use following command:
+
 gradlew build runIde
 
-For server details please see server repo: 
+For server details please see server repo: https://github.com/tps193/JetBrainHashCheckerServer
 
 Plugin limitations:
 1. Gradle dependencies which are not actually added to the Module dependencies (for example if newer version is found)
