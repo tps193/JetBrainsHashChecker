@@ -148,8 +148,9 @@ class ChecksumToolWindow(private val project: Project) : ChecksumUpdateListener,
         artifactsTree.isRootVisible = true
         runBackgroundableTask("Update checksum tree", project, false) {
             buildResultsTree(checksumComparisonResult)
+            val newRoot = artifactChecksumTreeRoot.toMutableTreeNode(project.getVisibilityFilter())
             invokeLater {
-                updateTree(artifactChecksumTreeRoot.toMutableTreeNode(project.getVisibilityFilter()))
+                updateTree(newRoot)
                 artifactsTree.isRootVisible = false
             }
         }
@@ -212,9 +213,16 @@ class ChecksumToolWindow(private val project: Project) : ChecksumUpdateListener,
 
     override fun refreshTree(filter: VisibilityFilter) {
         val expansions = artifactsTree.getExpandedDescendants(TreePath(treeModel.root))
-        updateTree(artifactChecksumTreeRoot.toMutableTreeNode(filter))
-        expansions?.asIterator()?.forEach {
-            artifactsTree.expandPath(it)
+
+        runBackgroundableTask("Refresh checksum tree", project, false) {
+            val newRoot = artifactChecksumTreeRoot.toMutableTreeNode(filter)
+            invokeLater {
+                updateTree(newRoot)
+                artifactsTree.isRootVisible = false
+                expansions?.asIterator()?.forEach {
+                    artifactsTree.expandPath(it)
+                }
+            }
         }
     }
 
