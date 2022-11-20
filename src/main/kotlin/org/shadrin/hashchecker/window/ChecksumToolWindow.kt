@@ -53,7 +53,7 @@ class ChecksumToolWindow(private val project: Project) : ChecksumUpdateListener,
 
         val actionManager = ActionManager.getInstance()
         val toolbar = actionManager.createActionToolbar("Any", (actionManager
-            .getAction("ChecksumVerification.View") as DefaultActionGroup)!!, true)
+            .getAction("ChecksumVerification.View") as DefaultActionGroup), true)
         toolbar.targetComponent = simpleToolWindowPanel
         simpleToolWindowPanel.toolbar = toolbar.component
 
@@ -152,7 +152,17 @@ class ChecksumToolWindow(private val project: Project) : ChecksumUpdateListener,
             invokeLater {
                 updateTree(newRoot)
                 artifactsTree.isRootVisible = false
+                expandAllNodes(artifactsTree)
             }
+        }
+    }
+
+    private fun expandAllNodes(tree: Tree, startingIndex: Int = 0, rowCount: Int = tree.rowCount) {
+        for (i in startingIndex until rowCount) {
+            tree.expandRow(i)
+        }
+        if (tree.rowCount != rowCount) {
+            expandAllNodes(tree, rowCount, tree.rowCount)
         }
     }
 
