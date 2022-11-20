@@ -101,7 +101,7 @@ class ChecksumUpdater(project: Project) : Task.Backgroundable(
             val serverChecksums = itemsForUpdate.map { it.artifactId }
                 .chunked(chunk)
                 .map { retrieveChecksumsFromServer(it) }
-                .reduce { a, b -> a.toMutableList() + b }
+                .fold(listOf<ArtifactChecksum>()) { a, b -> a.toMutableList() + b }
                 .toList()
             project.getService(ChecksumCacheService::class.java).put(serverChecksums)
             serverChecksums
