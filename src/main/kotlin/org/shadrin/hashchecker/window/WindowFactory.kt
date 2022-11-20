@@ -8,6 +8,7 @@ import com.intellij.ui.content.Content
 import com.intellij.ui.content.ContentFactory
 import org.shadrin.hashchecker.execution.ChecksumUpdaterProjectImportListener
 import org.shadrin.hashchecker.listener.ChecksumUpdateListener
+import org.shadrin.hashchecker.listener.TreeFilterStateListener
 
 
 class WindowFactory : ToolWindowFactory {
@@ -16,7 +17,9 @@ class WindowFactory : ToolWindowFactory {
         val contentFactory = ContentFactory.getInstance()
         val content: Content = contentFactory.createContent(checksumToolWindow.getContent(), "", false)
         toolWindow.contentManager.addContent(content)
-        project.messageBus.connect().subscribe(ChecksumUpdateListener.CHECKSUM_UPDATE_TOPIC, checksumToolWindow)
+        project.messageBus.connect().subscribe(ChecksumUpdateListener.TOPIC, checksumToolWindow)
+        project.messageBus.connect().subscribe(TreeFilterStateListener.TOPIC, checksumToolWindow)
         project.messageBus.connect().subscribe(ProjectDataImportListener.TOPIC, ChecksumUpdaterProjectImportListener(project))
+
     }
 }

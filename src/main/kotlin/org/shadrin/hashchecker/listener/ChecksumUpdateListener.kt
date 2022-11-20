@@ -5,7 +5,7 @@ import org.shadrin.hashchecker.model.ChecksumComparison
 
 interface ChecksumUpdateListener {
     companion object {
-        val CHECKSUM_UPDATE_TOPIC = Topic.create("Checksums downloaded", ChecksumUpdateListener::class.java)
+        val TOPIC = Topic.create("Checksums downloaded", ChecksumUpdateListener::class.java)
     }
 
     fun notify(checksumComparisonResult: List<ChecksumComparison>)

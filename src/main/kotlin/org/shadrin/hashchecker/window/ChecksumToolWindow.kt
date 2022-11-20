@@ -1,10 +1,13 @@
 package org.shadrin.hashchecker.window
 
 import com.intellij.codeInsight.navigation.NavigationUtil
+import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.application.invokeLater
 import com.intellij.openapi.externalSystem.dependency.analyzer.DependencyAnalyzerDependency
 import com.intellij.openapi.progress.runBackgroundableTask
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.SimpleToolWindowPanel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.treeStructure.Tree
@@ -13,9 +16,12 @@ import org.jetbrains.plugins.gradle.dependency.analyzer.GradleDependencyAnalyzer
 import org.shadrin.hashchecker.extensions.DIGEST_ALGORITHM
 import org.shadrin.hashchecker.extensions.getArtifactNodeType
 import org.shadrin.hashchecker.extensions.getPsi
+import org.shadrin.hashchecker.extensions.getVisibilityFilter
 import org.shadrin.hashchecker.listener.ChecksumUpdateListener
+import org.shadrin.hashchecker.listener.TreeFilterStateListener
 import org.shadrin.hashchecker.model.ChecksumComparison
 import org.shadrin.hashchecker.model.ChecksumComparisonStatus
+import org.shadrin.hashchecker.model.VisibilityFilter
 import org.shadrin.hashchecker.window.tree.*
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
@@ -27,18 +33,29 @@ import javax.swing.JPanel
 import javax.swing.tree.DefaultMutableTreeNode
 import javax.swing.tree.DefaultTreeModel
 import javax.swing.tree.TreeNode
+import javax.swing.tree.TreePath
 
 
-class ChecksumToolWindow(private val project: Project) : ChecksumUpdateListener {
+class ChecksumToolWindow(private val project: Project) : ChecksumUpdateListener, TreeFilterStateListener {
 
     private val treeModel: DefaultTreeModel = DefaultTreeModel(DefaultMutableTreeNode("No result"))
     private val artifactsTree = Tree()
     private val goToButton = JButton("Go to")
 
+    private var artifactChecksumTreeRoot: ArtifactChecksumTreeNode = createStubChecksumTreeNode()
     fun getContent(): JComponent {
+        val simpleToolWindowPanel = SimpleToolWindowPanel(true)
+
         val mainPanel = JPanel().apply {
             layout = GridBagLayout()
         }
+        simpleToolWindowPanel.setContent(mainPanel)
+
+        val actionManager = ActionManager.getInstance()
+        val toolbar = actionManager.createActionToolbar("Any", (actionManager
+            .getAction("ChecksumVerification.View") as DefaultActionGroup)!!, true)
+        toolbar.targetComponent = simpleToolWindowPanel
+        simpleToolWindowPanel.toolbar = toolbar.component
 
         artifactsTree.cellRenderer = ArtifactTreeCellRenderer()
         artifactsTree.model = treeModel
@@ -118,7 +135,7 @@ class ChecksumToolWindow(private val project: Project) : ChecksumUpdateListener 
             }
         })
 
-        return mainPanel
+        return simpleToolWindowPanel
     }
 
     private fun updateTree(rootNode: TreeNode) {
@@ -130,22 +147,17 @@ class ChecksumToolWindow(private val project: Project) : ChecksumUpdateListener 
         goToButton.isVisible = false
         artifactsTree.isRootVisible = true
         runBackgroundableTask("Update checksum tree", project, false) {
-            val tree = buildResultsTree(checksumComparisonResult)
+            buildResultsTree(checksumComparisonResult)
             invokeLater {
-                updateTree(tree)
+                updateTree(artifactChecksumTreeRoot.toMutableTreeNode(project.getVisibilityFilter()))
                 artifactsTree.isRootVisible = false
             }
         }
     }
 
-    private fun buildResultsTree(checksumComparisonResult: List<ChecksumComparison>): TreeNode {
+    private fun buildResultsTree(checksumComparisonResult: List<ChecksumComparison>) {
         val checksumVerification = checksumComparisonResult.associateBy { it.artifactId }
-        val rootNode = ArtifactChecksumTreeNode(
-            ArtifactChecksumInfo(
-                "root",
-                ChecksumComparison(artifactId = "stub", status = ChecksumComparisonStatus.UNKNOWN),
-                ArtifactNodeType.UNKNOWN)
-        )
+        val rootNode = createStubChecksumTreeNode()
         val gradleDependencyAnalyzerContributor = GradleDependencyAnalyzerContributor(project)
         gradleDependencyAnalyzerContributor.getProjects().forEach { it ->
             val dependencies = gradleDependencyAnalyzerContributor.getDependencies(it)
@@ -177,6 +189,9 @@ class ChecksumToolWindow(private val project: Project) : ChecksumUpdateListener 
                             children = mutableListOf(),
                             parent = parentNode
                         )
+                        if (newNode.artifactChecksumInfo.checksumVerification.status is ChecksumComparisonStatus.Error) {
+                            markParentNodesHavingErrorNode(parentNode)
+                        }
                         parentNode.children.add(newNode)
                         existing = newNode
                     }
@@ -184,7 +199,29 @@ class ChecksumToolWindow(private val project: Project) : ChecksumUpdateListener 
                 }
             }
         }
-
-        return rootNode.toMutableTreeNode()
+        artifactChecksumTreeRoot = rootNode
     }
+
+    private fun markParentNodesHavingErrorNode(parentNode: ArtifactChecksumTreeNode) {
+        var parent: ArtifactChecksumTreeNode? = parentNode
+        while(parent != null && !parent.hasErrorChild) {
+            parent.hasErrorChild = true
+            parent = parent.parent
+        }
+    }
+
+    override fun refreshTree(filter: VisibilityFilter) {
+        val expansions = artifactsTree.getExpandedDescendants(TreePath(treeModel.root))
+        updateTree(artifactChecksumTreeRoot.toMutableTreeNode(filter))
+        expansions?.asIterator()?.forEach {
+            artifactsTree.expandPath(it)
+        }
+    }
+
+    private fun createStubChecksumTreeNode() = ArtifactChecksumTreeNode(
+        ArtifactChecksumInfo(
+        "root",
+        ChecksumComparison(artifactId = "stub", status = ChecksumComparisonStatus.UNKNOWN),
+        ArtifactNodeType.UNKNOWN)
+    )
 }

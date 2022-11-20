@@ -7,9 +7,6 @@ import org.shadrin.hashchecker.execution.ChecksumUpdater
 import java.util.logging.Logger
 
 class AnalyzeHashesAction : AnAction() {
-
-    private val logger = Logger.getLogger(this::class.java.name)
-
     override fun actionPerformed(e: AnActionEvent) {
         e.project?.let {
             ProgressManager.getInstance().run(ChecksumUpdater(it))

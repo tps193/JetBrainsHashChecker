@@ -29,7 +29,8 @@ class ArtifactTreeCellRenderer : DefaultTreeCellRenderer() {
                         when(data.checksumVerification.status) {
                             is ChecksumComparisonStatus.Error -> AllIcons.General.Error
                             ChecksumComparisonStatus.OK -> AllIcons.General.InspectionsOK
-                            is ChecksumComparisonStatus.Skipped -> AllIcons.General.ShowWarning
+                            is ChecksumComparisonStatus.Skipped -> AllIcons.General.ContextHelp
+                            ChecksumComparisonStatus.NOT_IMPORTED -> AllIcons.General.ShowWarning
                             else -> AllIcons.FileTypes.Unknown
                         }
                     }

@@ -32,10 +32,35 @@
     </extensions>
 
     <actions>
+        <group
+                id="ChecksumVerification.View"
+                text="Checksum Verification Group"
+                popup="true"/>
         <action class="org.shadrin.hashchecker.actions.AnalyzeHashesAction"
                 id="org.shadrin.hashchecker.actions.AnalyzeHashesAction"
+                icon="AllIcons.General.InlineRefreshHover"
                 text="Analyze Hashes">
             <add-to-group group-id="AnalyzeActionsPopup"/>
+            <add-to-group group-id="ChecksumVerification.View"/>
+        </action>
+
+        <action class="org.shadrin.hashchecker.actions.ShowVerified"
+                id="org.shadrin.hashchecker.actions.ShowVerified"
+                icon="AllIcons.General.InspectionsOK"
+                text="Show Verified">
+            <add-to-group group-id="ChecksumVerification.View"/>
+        </action>
+        <action class="org.shadrin.hashchecker.actions.ShowSkipped"
+                id="org.shadrin.hashchecker.actions.ShowSkipped"
+                icon="AllIcons.General.ContextHelp"
+                text="Show Skipped">
+            <add-to-group group-id="ChecksumVerification.View"/>
+        </action>
+        <action class="org.shadrin.hashchecker.actions.ShowUnimported"
+                id="org.shadrin.hashchecker.actions.ShowUnimported"
+                icon="AllIcons.General.ShowWarning"
+                text="Show Not Imported">
+            <add-to-group group-id="ChecksumVerification.View"/>
         </action>
     </actions>
 </idea-plugin>

@@ -133,7 +133,7 @@ class ChecksumUpdater(project: Project) : Task.Backgroundable(
                 }
             }
         }
-        project.messageBus.syncPublisher(ChecksumUpdateListener.CHECKSUM_UPDATE_TOPIC).notify(checksumComparisonResult)
+        project.messageBus.syncPublisher(ChecksumUpdateListener.TOPIC).notify(checksumComparisonResult)
     }
 
     private fun getChunkSizeFromServer(): Int? {
