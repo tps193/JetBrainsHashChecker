@@ -3,6 +3,7 @@ package org.shadrin.hashchecker.data
 import com.intellij.openapi.components.Service
 import org.shadrin.hashchecker.model.json.ArtifactChecksum
 
+// TODO: Is it necessary to have it as a service?
 @Service
 class ChecksumCacheService {
     /*

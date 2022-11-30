@@ -1,5 +1,6 @@
 package org.shadrin.hashchecker.model
 
+// TODO: Why is sealed class better than enum here?
 sealed class ChecksumComparisonStatus {
     object OK : ChecksumComparisonStatus()
     object UNKNOWN : ChecksumComparisonStatus()

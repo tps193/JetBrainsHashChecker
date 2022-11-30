@@ -30,6 +30,7 @@ dependencies {
     implementation(fileTree("/Users/sergey/Library/Application Support/JetBrains/IntelliJIdea2021.3/plugins/package-checker/"))
    // implementation(fileTree(include: ['*.jar'], dir: '/Users/sergey/Library/Application Support/JetBrains/IntelliJIdea2021.3/plugins/package-checker/'))
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.2")
+    implementation("com.squareup.okhttp:okhttp:2.7.5") // To let the code compile
 //    implementation("com.jetbrains.intellij.platform:jps-model-serialization:182.2949.4")
 //    implementation("com.jetbrains.intellij.platform:jps-model-impl:182.2949.4")
 }

@@ -2,12 +2,12 @@ package org.shadrin.hashchecker.actions
 
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.ToggleAction
-import org.shadrin.hashchecker.extensions.VISIBILITY_FILTER_KEY
 import org.shadrin.hashchecker.extensions.getVisibilityFilter
 import org.shadrin.hashchecker.extensions.setVisibilityFilter
 import org.shadrin.hashchecker.listener.TreeFilterStateListener
 import org.shadrin.hashchecker.model.VisibilityFilter
 
+// TODO: May it worth exporting duplicated parts of Show... actions?
 class ShowSkipped : ToggleAction() {
 
     override fun isSelected(e: AnActionEvent): Boolean {

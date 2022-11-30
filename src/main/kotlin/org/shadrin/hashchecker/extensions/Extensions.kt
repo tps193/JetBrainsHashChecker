@@ -18,6 +18,7 @@ const val DIGEST_ALGORITHM = "SHA-256"
 
 val VISIBILITY_FILTER_KEY = Key<VisibilityFilter>("showVerifiedChecksum")
 
+// TODO: How could the current approach hurt performance?
 fun ByteArray.toHex() = joinToString(separator = "") { byte -> "%02x".format(byte) }
 
 fun File.calculateChecksum(): String {

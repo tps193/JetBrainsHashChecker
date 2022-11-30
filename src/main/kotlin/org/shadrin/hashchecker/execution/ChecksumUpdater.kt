@@ -60,14 +60,15 @@ class ChecksumUpdater(project: Project) : Task.Backgroundable(
                         if (!data.isUnresolved) {
                             val artifactId = "${data.groupId ?: ""}:${data.artifactId ?: ""}:${data.version ?: ""}"
                             artifactIds.add(artifactId)
+                            // TODO: Why taking first of the paths?
                             data.getPaths(LibraryPathType.BINARY).first().let { path ->
                                 try {
-                                    File(path).calculateChecksum().also { checksum ->
-                                        checksumComparisonResult.add(
-                                            ChecksumComparison(
-                                            artifactId = artifactId,
-                                            localChecksum = checksum
-                                        ))
+                                        File(path).calculateChecksum().also { checksum ->
+                                            checksumComparisonResult.add(
+                                                ChecksumComparison(
+                                                artifactId = artifactId,
+                                                localChecksum = checksum
+                                            ))
                                     }
                                 } catch (e: IOException) {
                                     logger.log(Level.WARNING, "Can't calculate checksum for $path", e)
@@ -169,9 +170,10 @@ class ChecksumUpdater(project: Project) : Task.Backgroundable(
             .build()
         val call = client.newCall(request)
         try {
+            // TODO: Is it intended to use blocking API? Please suggest an alternative async approach would make more sense.
             val response = call.execute()
             if (response?.isSuccessful == true) {
-                response.body()?.let { body ->
+                response.body()?.let { body -> // TODO: this `body` shadows the `body` above
                     try {
                         return Json.decodeFromString<ArtifactChecksumList>(body.string()).result
                     } catch (e: JsonProcessingException) {
