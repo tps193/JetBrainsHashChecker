@@ -1,25 +1,10 @@
 package org.shadrin.hashchecker.actions
 
-import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.actionSystem.ToggleAction
-import org.shadrin.hashchecker.extensions.VISIBILITY_FILTER_KEY
-import org.shadrin.hashchecker.extensions.getVisibilityFilter
-import org.shadrin.hashchecker.extensions.setVisibilityFilter
-import org.shadrin.hashchecker.listener.TreeFilterStateListener
 import org.shadrin.hashchecker.model.VisibilityFilter
 
-class ShowUnimported : ToggleAction() {
+class ShowUnimported : AbstractShowAction() {
 
-    override fun isSelected(e: AnActionEvent): Boolean {
-        val filter = e.project?.getVisibilityFilter() ?: VisibilityFilter.default
-        return filter.showUnimported
-    }
+    override fun modifyFilter(filter: VisibilityFilter, state: Boolean) = filter.copy(showUnimported = state)
 
-    override fun setSelected(e: AnActionEvent, state: Boolean) {
-        e.project?.apply {
-            val newFilter = getVisibilityFilter().copy(showUnimported = state)
-            setVisibilityFilter(newFilter)
-            messageBus.syncPublisher(TreeFilterStateListener.TOPIC).refreshTree(newFilter)
-        }
-    }
+    override fun isSelectedImpl(filter: VisibilityFilter): Boolean = filter.showUnimported
 }

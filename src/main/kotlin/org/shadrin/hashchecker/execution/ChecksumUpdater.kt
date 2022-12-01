@@ -60,22 +60,34 @@ class ChecksumUpdater(project: Project) : Task.Backgroundable(
                         if (!data.isUnresolved) {
                             val artifactId = "${data.groupId ?: ""}:${data.artifactId ?: ""}:${data.version ?: ""}"
                             artifactIds.add(artifactId)
-                            data.getPaths(LibraryPathType.BINARY).first().let { path ->
-                                try {
-                                    File(path).calculateChecksum().also { checksum ->
-                                        checksumComparisonResult.add(
-                                            ChecksumComparison(
+                            // Q: Why taking first of the paths?
+                            /*
+                                A: it is not really correct here btw. It works ok for simple cases like regular java
+                                dependency because usually hashset contains just single entry. But I forgot to test it
+                                with something like Android libs and missed it later. Taking the first one
+                                wouldn't work properly because for example an .aar has 3 binaries in the set (funny that
+                                it is linked hash set and first element is classes.jar there).
+                                Code is modified to be more robust. I need to test more to make sure that dependencies
+                                don't have multiple jar files in binaries
+                             */
+                            data.getPaths(LibraryPathType.BINARY)
+                                .find { path -> path.endsWith(".jar", true) }
+                                ?.let { path ->
+                                    try {
+                                            File(path).calculateChecksum().also { checksum ->
+                                                checksumComparisonResult.add(
+                                                    ChecksumComparison(
+                                                    artifactId = artifactId,
+                                                    localChecksum = checksum
+                                                ))
+                                        }
+                                    } catch (e: IOException) {
+                                        logger.log(Level.WARNING, "Can't calculate checksum for $path", e)
+                                        checksumComparisonResult.add(ChecksumComparison(
                                             artifactId = artifactId,
-                                            localChecksum = checksum
+                                            status = ChecksumComparisonStatus.Skipped("Error getting file checksum")
                                         ))
                                     }
-                                } catch (e: IOException) {
-                                    logger.log(Level.WARNING, "Can't calculate checksum for $path", e)
-                                    checksumComparisonResult.add(ChecksumComparison(
-                                        artifactId = artifactId,
-                                        status = ChecksumComparisonStatus.Skipped("Error getting file checksum")
-                                    ))
-                                }
                             }
 
                         }
@@ -103,7 +115,7 @@ class ChecksumUpdater(project: Project) : Task.Backgroundable(
                 .map { retrieveChecksumsFromServer(it) }
                 .fold(listOf<ArtifactChecksum>()) { a, b -> a.toMutableList() + b }
                 .toList()
-            project.getService(ChecksumCacheService::class.java).put(serverChecksums)
+            ChecksumCacheService.put(serverChecksums)
             serverChecksums
         }?.associate { it.identifier to it.checksum }
 
@@ -116,10 +128,9 @@ class ChecksumUpdater(project: Project) : Task.Backgroundable(
     }
 
     private fun setCachedServerChecksums(checksumComparisonResult: MutableList<ChecksumComparison>) {
-        val cachedChecksumService = project.getService(ChecksumCacheService::class.java)
         checksumComparisonResult.filter { it.status == ChecksumComparisonStatus.UNKNOWN }
             .forEach { comparison ->
-                comparison.serverChecksum = cachedChecksumService.get(comparison.artifactId)?.checksum
+                comparison.serverChecksum = ChecksumCacheService.get(comparison.artifactId)?.checksum
             }
     }
 
@@ -169,9 +180,10 @@ class ChecksumUpdater(project: Project) : Task.Backgroundable(
             .build()
         val call = client.newCall(request)
         try {
+            // TODO: Is it intended to use blocking API? Please suggest an alternative async approach would make more sense.
             val response = call.execute()
             if (response?.isSuccessful == true) {
-                response.body()?.let { body ->
+                response.body()?.let { body -> // TODO: this `body` shadows the `body` above
                     try {
                         return Json.decodeFromString<ArtifactChecksumList>(body.string()).result
                     } catch (e: JsonProcessingException) {
