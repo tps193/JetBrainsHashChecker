@@ -1,11 +1,15 @@
 package org.shadrin.hashchecker.data
 
-import com.intellij.openapi.components.Service
 import org.shadrin.hashchecker.model.json.ArtifactChecksum
 
 // TODO: Is it necessary to have it as a service?
-@Service
-class ChecksumCacheService {
+/* A: no, as it is application-level service to implement application level cache it might be just a singleton
+    And also btw even with service implementation I used it incorrectly:
+    1. I forgot to add it to plugin.xml
+    2. I invoked it using project.getService instead of application manager.
+ */
+
+object ChecksumCacheService {
     /*
     TODO: make a memory efficient cache
      */
